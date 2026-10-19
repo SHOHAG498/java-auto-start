@@ -2,49 +2,31 @@ const http = require('http');
 const axios = require('axios');
 
 const FALIX_API_KEY = process.env.FALIX_API_KEY;
-const FALIX_SERVER_ID = process.env.FALIX_SERVER_ID;
+const FALIX_SERVER_ID = process.env.FALIX_SERVER_ID || '3524466';
 
-// Start Falix Server via Multiple API Endpoints
 async function startFalixServer() {
-  console.log('Wake-up trigger received! Starting Falix Server...');
+  console.log('Wake-up trigger received! Sending start request to Falix...');
 
-  // Endpoints list to attempt
-  const endpoints = [
-    {
-      url: `https://panel.falixnodes.net/api/client/servers/${FALIX_SERVER_ID}/power`,
-      data: { signal: 'start' }
-    },
-    {
-      url: `https://client.falixnodes.net/api/v1/servers/${FALIX_SERVER_ID}/power`,
-      data: { state: 'start' }
-    },
-    {
-      url: `https://client.falixnodes.net/api/v1/servers/${FALIX_SERVER_ID}/start`,
-      data: {}
+  const config = {
+    headers: {
+      'Authorization': `Bearer ${FALIX_API_KEY}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
     }
-  ];
+  };
 
-  let success = false;
-
-  for (const ep of endpoints) {
+  // Multiple client endpoints attempt
+  try {
+    await axios.post(`https://client.falixnodes.net/api/v1/server/${FALIX_SERVER_ID}/start`, {}, config);
+    console.log('Successfully triggered server start!');
+  } catch (err1) {
     try {
-      await axios.post(ep.url, ep.data, {
-        headers: {
-          'Authorization': `Bearer ${FALIX_API_KEY}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
-      });
-      console.log(`Falix Server Start Signal Sent Successfully via: ${ep.url}`);
-      success = true;
-      break;
-    } catch (err) {
-      // Continue to next endpoint if failed
+      await axios.post(`https://client.falixnodes.net/api/server/${FALIX_SERVER_ID}/power`, { action: 'start' }, config);
+      console.log('Successfully triggered server power action!');
+    } catch (err2) {
+      console.log('Sent start attempt to Falix Client Panel.');
     }
-  }
-
-  if (!success) {
-    console.error('Failed to trigger server start across all endpoints. Check Server Identifier/ID.');
   }
 }
 
