@@ -4,41 +4,47 @@ const axios = require('axios');
 const FALIX_API_KEY = process.env.FALIX_API_KEY;
 const FALIX_SERVER_ID = process.env.FALIX_SERVER_ID;
 
-// Start Falix Server via Client API
+// Start Falix Server via Multiple API Endpoints
 async function startFalixServer() {
-  try {
-    console.log('Wake-up trigger received! Starting Falix Server...');
-    
-    // Updated endpoint for FalixNodes Client API
-    await axios.post(
-      `https://client.falixnodes.net/api/v1/servers/${FALIX_SERVER_ID}/power`,
-      { state: 'start' },
-      {
+  console.log('Wake-up trigger received! Starting Falix Server...');
+
+  // Endpoints list to attempt
+  const endpoints = [
+    {
+      url: `https://panel.falixnodes.net/api/client/servers/${FALIX_SERVER_ID}/power`,
+      data: { signal: 'start' }
+    },
+    {
+      url: `https://client.falixnodes.net/api/v1/servers/${FALIX_SERVER_ID}/power`,
+      data: { state: 'start' }
+    },
+    {
+      url: `https://client.falixnodes.net/api/v1/servers/${FALIX_SERVER_ID}/start`,
+      data: {}
+    }
+  ];
+
+  let success = false;
+
+  for (const ep of endpoints) {
+    try {
+      await axios.post(ep.url, ep.data, {
         headers: {
           'Authorization': `Bearer ${FALIX_API_KEY}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         }
-      }
-    );
-    console.log('Falix Server Start Signal Sent Successfully!');
-  } catch (error) {
-    // Fallback attempt
-    try {
-      await axios.post(
-        `https://client.falixnodes.net/api/v1/servers/${FALIX_SERVER_ID}/start`,
-        {},
-        {
-          headers: {
-            'Authorization': `Bearer ${FALIX_API_KEY}`,
-            'Accept': 'application/json'
-          }
-        }
-      );
-      console.log('Falix Server Start Signal Sent (Fallback)!');
-    } catch (fallbackErr) {
-      console.error('Error starting Falix Server:', error.response ? JSON.stringify(error.response.data) : error.message);
+      });
+      console.log(`Falix Server Start Signal Sent Successfully via: ${ep.url}`);
+      success = true;
+      break;
+    } catch (err) {
+      // Continue to next endpoint if failed
     }
+  }
+
+  if (!success) {
+    console.error('Failed to trigger server start across all endpoints. Check Server Identifier/ID.');
   }
 }
 
